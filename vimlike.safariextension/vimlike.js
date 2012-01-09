@@ -39,10 +39,15 @@ exHandler: {
 
     top.location = page;
   },
-  ':gr' : function() {
+  ':go' : function() {
     // Search Google.
     var query = encodeURIComponent(Array.prototype.slice.call(arguments).join(' '));
     top.location = 'http://www.google.com/search?client=safari&q=' + query;
+  },
+  ':gy' : function() {
+    // Search YouTube.
+    var query = encodeURIComponent(Array.prototype.slice.call(arguments).join(' '));
+    top.location = 'http://www.youtube.com/results?search_query=' + query + '&oq=' + query
   },
 },
 formHandler:{
@@ -64,12 +69,11 @@ keyEvent: function(e){
      if( e.ctrlKey ){ pressKey = 'C-' + pressKey; }
      if( e.shiftKey ){ pressKey = 'S-' + pressKey; }
      if( e.altKey ){ pressKey = 'A-' + pressKey; }
-     if( e.metaKey ){ return; // Avoid colliding with system shortcuts }
+     if( e.metaKey ){ return; } // Avoid colliding with system shortcuts
      if( pressKey == 'S-shift' ){ //don't use :)
        return;
      }
 
-     console.log("presskey = " + pressKey);
      if( tn == 'input' || tn == 'textarea' || tn == 'select' ){
        if (VIMLIKE.ignoreForms)
          e.preventDefault();
@@ -137,16 +141,15 @@ exMode: function(){
   input.value = ':';
   input.style['color'] = 'white';
   input.style['background-color'] = 'black';
-  input.style['fontSize'] = '18pxt';
+  input.style['fontSize'] = '18px';
   input.style['fontFamily'] = 'monospace';
-  //input.style['lineHeight'] = '18pt';
   input.style['padding'] = '0px';
   input.style['margin'] = '0px';
   input.style['opacity'] = '0.7';
   input.style['position'] = 'absolute';
   input.style['top'] = '50%';
-  input.style['left'] = '50%';
-  input.style['width'] = top.innerWidth + 'px';
+  input.style['left'] = '0%';
+  input.style['width'] = '100%';
   input.style['margin-left'] = '0px';
   input.style['margin-top'] = '-9px';
   
