@@ -25,7 +25,7 @@
 		<dict>
 			<key>End</key>
 			<array>
-				<string>vimlilke.js</string>
+				<string>vimlike.js</string>
 			</array>
 		</dict>
 	</dict>
@@ -42,8 +42,8 @@
 		</dict>
 	</dict>
 	<key>Update Manifest URL</key>
-	<string>http://vimlike-onsafari.googlecode.com/files/update.plist</string>
+  <string>https://raw.github.com/sfowler/vimlike-extended/master/vimlike-extended.safariextz</string>
 	<key>Website</key>
-	<string>http://tunsns.net/</string>
+  <string>https://github.com/sfowler/vimlike-extended</string>
 </dict>
 </plist>

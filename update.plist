@@ -14,7 +14,7 @@
        <key>CFBundleShortVersionString</key>
        <string>1.3</string>
        <key>URL</key>
-       <string>http://vimlike-onsafari.googlecode.com/files/vimlike.safariextz</string>
+       <string>https://raw.github.com/sfowler/vimlike-extended/master/vimlike-extended.safariextz</string>
      </dict>
    </array>
 </dict>
