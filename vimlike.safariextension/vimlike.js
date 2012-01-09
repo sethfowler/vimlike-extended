@@ -142,10 +142,10 @@ pagedown: function(){
 pageup: function(){
   scrollBy(0, -(VIMLIKE.interval*10));
 },
-scrollBydown: function(){
+scrolldown: function(){
   scrollBy(0, VIMLIKE.interval);
 },
-scrollByup: function(){
+scrollup: function(){
   scrollBy(0, -VIMLIKE.interval);
 },
 scrollTop: function(){
