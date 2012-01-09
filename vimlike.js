@@ -19,8 +19,6 @@ handler: {
   'S-k' : function(){ VIMLIKE.nextTab(); },
   'gS-t': function(){ VIMLIKE.previousTab(); },
   'S-j': function(){ VIMLIKE.previousTab(); },
-  'd' : function(){ VIMLIKE.closeTab(); },
-  'C-w' : function(){ VIMLIKE.closeTab(); },
   'r' : function(){ VIMLIKE.reload(); },
   'f' : function(){ VIMLIKE.hah(true); },
   '/' : function(){ VIMLIKE.hah(true); },
@@ -28,7 +26,10 @@ handler: {
   'S-h' : function(){ VIMLIKE.historyBack(); },
   'S-l' : function(){ VIMLIKE.historyForward(); },
   'escape' : function(){ VIMLIKE.blurFocus(); },
-  'C-[' : function(){ VIMLIKE.blurFocus(); }
+  'C-[' : function(){ VIMLIKE.blurFocus(); },
+  ':' : function(){ VIMLIKE.exMode(); },
+},
+exHandler: {
 },
 formHandler:{
   'escape' : function(){ VIMLIKE.blurFocus(); },
@@ -38,6 +39,7 @@ firstStroke:{},
 keyChoice:[],
 keyEvent: function(e){
   if( VIMLIKE.mode == 'hint' ){ return; }
+  if( VIMLIKE.mode == 'ex' ){ return; }
   var t = e.target;
   if( t.nodeType == 1 ){
      var tn = t.tagName.toLowerCase();
@@ -87,17 +89,64 @@ keyEvent: function(e){
       VIMLIKE.handler[pressKey].apply();
   }
 },
+exMode: function(){
+  VIMLIKE.mode = 'ex';
+
+  var div = document.createElement('div');
+  var input = document.createElement('input');
+
+  input.type = 'text';
+  input.value = '';
+  input.style['position'] = 'absolute';
+  input.style['zIndex'] = '214783647';
+  input.style['color'] = '#000';
+  input.style['fontSize'] = '10pxt';
+  input.style['fontFamily'] = 'monospace';
+  input.style['lineHeight'] = '10pt';
+  input.style['padding'] = '0px';
+  input.style['margin'] = '0px';
+  input.style['opacity'] = '0.7';
+  
+  input.onkeydown = function(evt) {
+    if (evt.keyCode == 13)
+    {
+      // Enter was pressed.
+      VIMLIKE.mode = 'normal';
+      evt.preventDefault();
+      var cmd = input.value;
+      body.removeChild(input);
+
+      var args = cmd.split(' ');
+      if (typeof VIMLIKE.exHandler[args[0]] == 'function')
+        VIMLIKE.exHandler[args[0]].apply(this, args);
+    }
+    else if (evt.keyCode == 27)
+    {
+      // Escape was pressed.
+      VIMLIKE.mode = 'normal';
+      evt.preventDefault();
+      body.removeChild(input);
+    }
+  };
+
+  div.appendChild(input);
+  body.appendChild(div);
+
+  // Center.
+  div.style['top'] = ((top.height() - div.outerHeight()) / 2 + top.scrollTop()) + 'px';
+  div.style['left'] = ((top.width() - div.outerWidth()) / 2 + top.scrollLeft()) + 'px';
+},
 pagedown: function(){
-  scroll(0, window.pageYOffset + (VIMLIKE.interval*10));
+  scrollBy(0, VIMLIKE.interval*10);
 },
 pageup: function(){
-  scroll(0, window.pageYOffset - (VIMLIKE.interval*10));
+  scrollBy(0, -(VIMLIKE.interval*10));
 },
-scrolldown: function(){
-  scroll(0, window.pageYOffset + VIMLIKE.interval);
+scrollBydown: function(){
+  scrollBy(0, VIMLIKE.interval);
 },
-scrollup: function(){
-  scroll(0, window.pageYOffset - VIMLIKE.interval);
+scrollByup: function(){
+  scrollBy(0, -VIMLIKE.interval);
 },
 scrollTop: function(){
   scroll(0, -document.documentElement.scrollHeight)
