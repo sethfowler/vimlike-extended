@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+   <key>Extension Updates</key>
+   <array>
+     <dict>
+       <key>CFBundleIdentifier</key>
+       <string>net.tunsns.vimlike</string>
+       <key>Developer Identifier</key>
+       <string>F59T9XGH7T</string>
+       <key>CFBundleVersion</key>
+       <string>1.3</string>
+       <key>CFBundleShortVersionString</key>
+       <string>1.3</string>
+       <key>URL</key>
+       <string>http://vimlike-onsafari.googlecode.com/files/vimlike.safariextz</string>
+     </dict>
+   </array>
+</dict>
+</plist>
