@@ -2,9 +2,11 @@
 var VIMLIKE = {
 hintText: '',
 mode : 'normal',
+ignoreForms : false,
 interval: 30,
 handler: {
   'S-escape' : function(){ VIMLIKE.modechange(); },
+  'C-escape' : function() { VIMLIKE.toggleIgnoreForms(); },
   'C-d'  : function(){ VIMLIKE.pagedown(); },
   'C-u'  : function(){ VIMLIKE.pageup(); },
   'j'  : function(){ VIMLIKE.scrolldown(); },
@@ -30,10 +32,23 @@ handler: {
   ':' : function(){ VIMLIKE.exMode(); },
 },
 exHandler: {
+  ':e' : function(page) {
+    // Open a new page.
+    if (page.indexOf('://') == -1)
+      page = 'http://' + page;
+
+    top.location = page;
+  },
+  ':gr' : function() {
+    // Search Google.
+    var query = encodeURIComponent(Array.prototype.slice.call(arguments).join(' '));
+    top.location = 'http://www.google.com/search?client=safari&q=' + query;
+  },
 },
 formHandler:{
   'escape' : function(){ VIMLIKE.blurFocus(); },
-  'C-[': function(){ VIMLIKE.blurFocus(); }
+  'C-[': function(){ VIMLIKE.blurFocus(); },
+  'C-escape' : function() { VIMLIKE.toggleIgnoreForms(); },
 },
 firstStroke:{},
 keyChoice:[],
@@ -43,8 +58,9 @@ keyEvent: function(e){
   var t = e.target;
   if( t.nodeType == 1 ){
      var tn = t.tagName.toLowerCase();
-     var pressKey = VIMLIKE.kc2char(e.keyCode || e.charCode);
+     var pressKey = VIMLIKE.kc2char(e.which || e.keyCode);
      if( pressKey == 191 ) pressKey = '/'; //I want more good code :(
+     if( pressKey == 186 ) pressKey = ':';
      if( e.ctrlKey ){ pressKey = 'C-' + pressKey; }
      if( e.shiftKey ){ pressKey = 'S-' + pressKey; }
      if( e.altKey ){ pressKey = 'A-' + pressKey; }
@@ -52,18 +68,30 @@ keyEvent: function(e){
        return;
      }
 
+     console.log("presskey = " + pressKey);
      if( tn == 'input' || tn == 'textarea' || tn == 'select' ){
-        if( typeof VIMLIKE.formHandler[pressKey] == 'function' && VIMLIKE.mode != 'useonline' ){
-          e.preventDefault();
-          VIMLIKE.formHandler[pressKey].apply();
-        }
-        return;
+       if (VIMLIKE.ignoreForms)
+         e.preventDefault();
+       else
+       {
+         if( typeof VIMLIKE.formHandler[pressKey] == 'function' && VIMLIKE.mode != 'useonline' ){
+            e.preventDefault();
+            VIMLIKE.formHandler[pressKey].apply();
+         }
+         return;
+       }
      }
 
      if( VIMLIKE.mode == 'useonline' ){
        if( pressKey == 'S-escape' ){
          VIMLIKE.modechange();
        }
+       return;
+     }
+
+     if (VIMLIKE.keyChoice.length == 0 && pressKey == 'S-:'){
+       e.preventDefault();
+       VIMLIKE.exMode();
        return;
      }
 
@@ -90,51 +118,69 @@ keyEvent: function(e){
   }
 },
 exMode: function(){
+  console.log("Entering exMode");
+
   VIMLIKE.mode = 'ex';
 
   var div = document.createElement('div');
-  var input = document.createElement('input');
+  div.id = 'VIMLIKE:ex-mode';
+  div.style['position'] = 'absolute';
+  div.style['zIndex'] = '214783647';
+  div.style['padding'] = '0px';
+  div.style['margin'] = '0px';
+  div.style['opacity'] = '0.7';
+  div.style['background-color'] = 'black';
 
+  var input = document.createElement('input');
   input.type = 'text';
-  input.value = '';
-  input.style['position'] = 'absolute';
-  input.style['zIndex'] = '214783647';
-  input.style['color'] = '#000';
-  input.style['fontSize'] = '10pxt';
+  input.value = ':';
+  input.style['color'] = 'white';
+  input.style['background-color'] = 'black';
+  input.style['fontSize'] = '14pxt';
   input.style['fontFamily'] = 'monospace';
-  input.style['lineHeight'] = '10pt';
+  input.style['lineHeight'] = '14pt';
   input.style['padding'] = '0px';
   input.style['margin'] = '0px';
   input.style['opacity'] = '0.7';
+  input.style['position'] = 'absolute';
+  input.style['top'] = '50%';
+  input.style['left'] = '50%';
+  input.style['width'] = '200px';
+  input.style['margin-left'] = '-100px';
+  input.style['margin-top'] = '-7px';
   
   input.onkeydown = function(evt) {
-    if (evt.keyCode == 13)
-    {
-      // Enter was pressed.
-      VIMLIKE.mode = 'normal';
-      evt.preventDefault();
-      var cmd = input.value;
-      body.removeChild(input);
+    var keyCode = evt.which || evt.keyCode;
 
-      var args = cmd.split(' ');
-      if (typeof VIMLIKE.exHandler[args[0]] == 'function')
-        VIMLIKE.exHandler[args[0]].apply(this, args);
-    }
-    else if (evt.keyCode == 27)
+    if (keyCode == 13 || keyCode == 27)
     {
-      // Escape was pressed.
+      // Either enter or escape was pressed, so we're done.
       VIMLIKE.mode = 'normal';
       evt.preventDefault();
-      body.removeChild(input);
+      top.document.body.removeChild(div);
+
+      if (keyCode == 13)
+      {
+        // Enter was pressed.
+        var args = input.value.split(' ');
+        var cmd = args[0];
+        args.shift();       // Remove the command itself.
+        if (typeof VIMLIKE.exHandler[cmd] == 'function')
+          VIMLIKE.exHandler[cmd].apply(this, args);
+      }
     }
   };
 
   div.appendChild(input);
-  body.appendChild(div);
+  top.document.body.appendChild(div);
 
   // Center.
-  div.style['top'] = ((top.height() - div.outerHeight()) / 2 + top.scrollTop()) + 'px';
-  div.style['left'] = ((top.width() - div.outerWidth()) / 2 + top.scrollLeft()) + 'px';
+  div.style['top'] = top.pageYOffset + 'px';
+  div.style['left'] = top.pageXOffset + 'px';
+  div.style['height'] = top.innerHeight;
+  div.style['width'] = top.innerWidth;
+
+  input.focus();
 },
 pagedown: function(){
   scrollBy(0, VIMLIKE.interval*10);
@@ -425,6 +471,10 @@ modechange: function(){
     fadeOut(80);
   }
 },
+toggleIgnoreForms: function(){
+  VIMLIKE.ignoreForms = !VIMLIKE.ignoreForms;
+  console.log("Ignore forms = " + VIMLIKE.ignoreForms);
+},
 kc2char: function(kc){
    function between(a,b){
      return a <= kc && kc <= b;
@@ -437,7 +487,7 @@ kc2char: function(kc){
      16 : "shift",
      17 : "control",
      27 : "escape",
-     46 : "delete"
+     46 : "delete",
    };
    return (between(65,90)  ? String.fromCharCode(kc+32) : // a-z
            between(48,57)  ? String.fromCharCode(kc) :    // 0-9
