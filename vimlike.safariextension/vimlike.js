@@ -505,7 +505,7 @@ init: function(){
       VIMLIKE.firstStroke[key[0]] = true;
     }
   }
-  VIMLIKE.createModeDiv();
+  //VIMLIKE.createModeDiv();
   safari.self.tab.dispatchMessage('vimlike','load');
 
 },
@@ -542,7 +542,7 @@ createModeDiv: function(){
 }
 
 VIMLIKE.init(); 
-document.addEventListener( 'keydown', function(e){ VIMLIKE.keyEvent(e); },false);
+document.addEventListener( 'keydown', function(e){ VIMLIKE.keyEvent(e); }, true);
 
 if( typeof window.VIMLIKE == "undefined" ){
   window.VIMLIKE = VIMLIKE;
@@ -552,6 +552,6 @@ safari.self.addEventListener( 'message', function(e){
   if( e.name === 'hintText' ){
     VIMLIKE.hintText = e.message;
   }
-},false );
+}, false );
 
 })();
