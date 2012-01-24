@@ -1,0 +1,39 @@
+div.VIMLIKE-ex-mode-outer
+{
+  background-color:  black !important;
+  opacity:           0.7 !important;
+
+  position:          fixed !important;
+  z-index:           214783647 !important;
+  padding:           0px !important;
+  margin:            0px !important;
+  top:               0% !important;
+  bottom:            0% !important;
+  left:              0% !important;
+  right:             0% !important;
+}
+
+div.VIMLIKE-ex-mode-inner
+{
+	position:  relative !important;
+	padding:   0px !important;
+	margin:    0px !important;
+	width:     100% !important;
+	height:    100% !important;
+}
+
+input.VIMLIKE-ex-mode-input
+{
+	color:             white !important;
+	background-color:  black !important;
+
+	font-size:         18px !important;
+	font-family:       "Monaco", monospace !important;
+
+	position:          absolute !important;
+	padding:           0px !important;
+	margin:            0px !important;
+	bottom:            3px !important;
+	left:              3px !important;
+	right:             3px !important;
+}

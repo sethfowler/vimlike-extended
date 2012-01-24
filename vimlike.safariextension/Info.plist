@@ -30,6 +30,10 @@
 				<string>vimlike.js</string>
 			</array>
 		</dict>
+		<key>Stylesheets</key>
+		<array>
+			<string>vimlike.css</string>
+		</array>
 	</dict>
 	<key>Description</key>
 	<string>Add vim-like key bindings to Safari</string>

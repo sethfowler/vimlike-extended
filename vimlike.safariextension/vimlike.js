@@ -1,238 +1,298 @@
-(function(){
-var VIMLIKE = {
-hintText: '',
-mode : 'normal',
-ignoreForms : false,
-interval: 30,
-handler: {
-  'S-escape' : function(){ VIMLIKE.modechange(); },
-  'C-escape' : function() { VIMLIKE.toggleIgnoreForms(); },
-  'C-d'  : function(){ VIMLIKE.pagedown(); },
-  'C-u'  : function(){ VIMLIKE.pageup(); },
-  'j'  : function(){ VIMLIKE.scrolldown(); },
-  'k'  : function(){ VIMLIKE.scrollup(); },
-  'h'  : function(){ VIMLIKE.scrollleft(); },
-  'l'  : function(){ VIMLIKE.scrollright(); },
-  'gg' : function(){ VIMLIKE.scrollTop(); },
-  'S-g': function(){ VIMLIKE.scrollBottom(); },
-  't' : function(){ VIMLIKE.openNewTab(); },
-  'u' : function(){ VIMLIKE.reopenTab(); },
-  'gt' : function(){ VIMLIKE.nextTab(); },
-  'S-k' : function(){ VIMLIKE.nextTab(); },
-  'gS-t': function(){ VIMLIKE.previousTab(); },
-  'S-j': function(){ VIMLIKE.previousTab(); },
-  'r' : function(){ VIMLIKE.reload(); },
-  'f' : function(){ VIMLIKE.hah(true); },
-  '/' : function(){ VIMLIKE.hah(true); },
-  'S-f' : function(){ VIMLIKE.hah(false); },
-  'S-h' : function(){ VIMLIKE.historyBack(); },
-  'S-l' : function(){ VIMLIKE.historyForward(); },
-  'escape' : function(){ VIMLIKE.blurFocus(); },
-  'C-[' : function(){ VIMLIKE.blurFocus(); },
-  ':' : function(){ VIMLIKE.exMode(); },
-},
-exHandler: {
-  ':e' : function(page) {
-    // Open a new page.
-    if (page.indexOf('://') == -1)
-      page = 'http://' + page;
+(function()
+{
+  // State.
+  var hintText = '';
+  var insertDefault = true;
+  var mode = 'normal';
+  var ignoreForms = false;
+  var interval = 30;
+  var firstStroke = {};
+  var keyChoice = [];
 
-    top.location = page;
-  },
-  ':go' : function() {
-    // Search Google.
-    var query = encodeURIComponent(Array.prototype.slice.call(arguments).join(' '));
-    top.location = 'http://www.google.com/search?client=safari&q=' + query;
-  },
-  ':gy' : function() {
-    // Search YouTube.
-    var query = encodeURIComponent(Array.prototype.slice.call(arguments).join(' '));
-    top.location = 'http://www.youtube.com/results?search_query=' + query + '&oq=' + query
-  },
-},
-formHandler:{
-  'escape' : function(){ VIMLIKE.blurFocus(); },
-  'C-[': function(){ VIMLIKE.blurFocus(); },
-  'C-escape' : function() { VIMLIKE.toggleIgnoreForms(); },
-},
-firstStroke:{},
-keyChoice:[],
-keyEvent: function(e){
-  if( VIMLIKE.mode == 'hint' ){ return; }
-  if( VIMLIKE.mode == 'ex' ){ return; }
-  var t = e.target;
-  if( t.nodeType == 1 ){
-     var tn = t.tagName.toLowerCase();
-     var pressKey = VIMLIKE.kc2char(e.which || e.keyCode);
-     if( pressKey == 191 ) pressKey = '/'; //I want more good code :(
-     if( pressKey == 186 ) pressKey = ':';
-     if( e.ctrlKey ){ pressKey = 'C-' + pressKey; }
-     if( e.shiftKey ){ pressKey = 'S-' + pressKey; }
-     if( e.altKey ){ pressKey = 'A-' + pressKey; }
-     if( e.metaKey ){ return; } // Avoid colliding with system shortcuts
-     if( pressKey == 'S-shift' ){ //don't use :)
-       return;
-     }
+  // Normal mode handlers.
+  function pageDown() { scrollBy(0, interval*10); }
+  function pageUp() { scrollBy(0, -(interval*10)); }
+  function scrollDown() { scrollBy(0, interval); }
+  function scrollUp() { scrollBy(0, -interval); }
+  function scrollTop() { scroll(0, -document.documentElement.scrollHeight) }
+  function scrollBottom() { scroll(0, document.documentElement.scrollHeight) }
+  function scrollLeft() { scrollBy(-interval, 0); }
+  function scrollRight() { scrollBy(interval, 0); }
+  function openNewTab() { safari.self.tab.dispatchMessage('vimlike:openTab'); }
+  function openBackground(url) { safari.self.tab.dispatchMessage('vimlike:openBackgroundTab', {'url': url}); }
+  function reopenTab() { safari.self.tab.dispatchMessage('vimlike:reopenTab'); }
+  function previousTab() { safari.self.tab.dispatchMessage('vimlike:changeTab', {'offset': -1}); }
+  function nextTab() { safari.self.tab.dispatchMessage('vimlike:changeTab', {'offset': 1}); }
+  function closeTab() { safari.self.tab.dispatchMessage('vimlike:closeTab'); }
+  function reload() { location.reload(); }
+  function historyBack() { history.back(); }
+  function historyForward() { history.forward(); }
+  function blurFocus() { document.activeElement.blur(); }
 
-     if( tn == 'input' || tn == 'textarea' || tn == 'select' ){
-       if (VIMLIKE.ignoreForms)
-         e.preventDefault();
-       else
-       {
-         if( typeof VIMLIKE.formHandler[pressKey] == 'function' && VIMLIKE.mode != 'useonline' ){
-            e.preventDefault();
-            VIMLIKE.formHandler[pressKey].apply();
+  function modeChange()
+  {
+    switch(mode)
+    {
+      case 'useonline': mode = 'normal'; break;
+      case 'normal': mode = 'useonline'; break;
+      default: mode = 'normal'; break;
+    }
+  }
+
+  function toggleIgnoreForms()
+  {
+    ignoreForms = !ignoreForms;
+    console.log("Ignore forms = " + ignoreForms);
+  }
+
+  var normHandlers =
+  {
+    'S-escape' : function() { modeChange(); },
+    'C-escape' : function() { toggleIgnoreForms(); },
+    'C-d'  : function() { pageDown(); },
+    'C-u'  : function() { pageUp(); },
+    'j'  : function() { scrollDown(); },
+    'k'  : function() { scrollUp(); },
+    'h'  : function() { scrollLeft(); },
+    'l'  : function() { scrollRight(); },
+    'gg' : function() { scrollTop(); },
+    'S-g': function() { scrollBottom(); },
+    't' : function() { openNewTab(); },
+    'u' : function() { reopenTab(); },
+    'gt' : function() { nextTab(); },
+    'S-k' : function() { nextTab(); },
+    'gS-t': function() { previousTab(); },
+    'S-j': function() { previousTab(); },
+    'r' : function() { reload(); },
+    'f' : function() { linkSearch(); },
+    '/' : function() { hah(true); },
+    'S-f' : function() { hah(false); },
+    'S-h' : function() { historyBack(); },
+    'S-l' : function() { historyForward(); },
+    'escape' : function() { blurFocus(); },
+    'C-[' : function() { blurFocus(); },
+    ':' : function() { exMode(); },
+  }
+
+  // Ex mode handlers.
+  var exHandlers = 
+  {
+    ':e' : function(page) {
+      // Open a new page.
+      if (page.indexOf('://') == -1)
+        page = 'http://' + page;
+
+      top.location = page;
+    },
+    ':go' : function() {
+      // Search Google.
+      var query = encodeURIComponent(Array.prototype.slice.call(arguments).join(' '));
+      top.location = 'http://www.google.com/search?client=safari&q=' + query;
+    },
+    ':gy' : function() {
+      // Search YouTube.
+      var query = encodeURIComponent(Array.prototype.slice.call(arguments).join(' '));
+      top.location = 'http://www.youtube.com/results?search_query=' + query + '&oq=' + query
+    },
+  }
+
+  // Insert mode handlers.
+  var formHandlers =
+  {
+    'escape' : function() { blurFocus(); },
+    'C-[': function() { blurFocus(); },
+    'C-escape' : function() { toggleIgnoreForms(); },
+  }
+
+  function keyEvent(e)
+  {
+    if( mode == 'hint' ){ return; }
+    if( mode == 'ex' ){ return; }
+    var t = e.target;
+    if( t.nodeType == 1 ){
+       var tn = t.tagName.toLowerCase();
+       var pressKey = kc2char(e.which || e.keyCode);
+       if( pressKey == 191 ) pressKey = '/'; //I want more good code :(
+       if( pressKey == 186 ) pressKey = ':';
+       if( e.ctrlKey ){ pressKey = 'C-' + pressKey; }
+       if( e.shiftKey ){ pressKey = 'S-' + pressKey; }
+       if( e.altKey ){ pressKey = 'A-' + pressKey; }
+       if( e.metaKey ){ return; } // Avoid colliding with system shortcuts
+       if( pressKey == 'S-shift' ){ //don't use :)
+         return;
+       }
+
+       if( tn == 'input' || tn == 'textarea' || tn == 'select' ){
+         if (ignoreForms)
+           e.preventDefault();
+         else
+         {
+           if( typeof formHandlers[pressKey] == 'function' && mode != 'useonline' ){
+              e.preventDefault();
+              formHandlers[pressKey].apply();
+           }
+           return;
+         }
+       }
+
+       if( mode == 'useonline' ){
+         if( pressKey == 'S-escape' ){
+           modeChange();
          }
          return;
        }
-     }
 
-     if( VIMLIKE.mode == 'useonline' ){
-       if( pressKey == 'S-escape' ){
-         VIMLIKE.modechange();
+       if (keyChoice.length == 0 && pressKey == 'S-:'){
+         e.preventDefault();
+         exMode();
+         return;
        }
-       return;
-     }
 
-     if (VIMLIKE.keyChoice.length == 0 && pressKey == 'S-:'){
-       e.preventDefault();
-       VIMLIKE.exMode();
-       return;
-     }
+       keyChoice.push(pressKey);
+       var keychain = keyChoice.join('');
 
-     VIMLIKE.keyChoice.push(pressKey);
-     var keychain = VIMLIKE.keyChoice.join('');
-
-      if( VIMLIKE.firstStroke[pressKey] && typeof VIMLIKE.handler[keychain] != 'function' ){
-        e.preventDefault();
-        return;
-      }
-
-      //check w stroke bind
-      if( typeof VIMLIKE.handler[keychain] == 'function' ){
-        pressKey = keychain;
-      }else{
-        if( typeof VIMLIKE.handler[pressKey] != 'function' ){
-          VIMLIKE.keyChoice.length = 0; //clear keychoice
+        if( firstStroke[pressKey] && typeof handler[keychain] != 'function' ){
+          e.preventDefault();
           return;
         }
-      }
-      VIMLIKE.keyChoice.length = 0; //clear keychoice
-      e.preventDefault();
-      VIMLIKE.handler[pressKey].apply();
+
+        //check w stroke bind
+        if( typeof normHandlers[keychain] == 'function' ){
+          pressKey = keychain;
+        }else{
+          if( typeof normHandlers[pressKey] != 'function' ){
+            keyChoice.length = 0; //clear keychoice
+            return;
+          }
+        }
+        keyChoice.length = 0; //clear keychoice
+        e.preventDefault();
+        normHandlers[pressKey].apply();
+    }
   }
-},
-exMode: function(){
-  console.log("Entering exMode");
 
-  VIMLIKE.mode = 'ex';
+  function exMode()
+  {
+    console.log("Entering exMode");
 
-  var div = document.createElement('div');
-  div.id = 'VIMLIKE:ex-mode';
-  div.style['position'] = 'absolute';
-  div.style['zIndex'] = '214783647';
-  div.style['padding'] = '0px';
-  div.style['margin'] = '0px';
-  div.style['opacity'] = '0.7';
-  div.style['background-color'] = 'black';
+    mode = 'ex';
 
-  var input = document.createElement('input');
-  input.type = 'text';
-  input.value = ':';
-  input.style['color'] = 'white';
-  input.style['background-color'] = 'black';
-  input.style['fontSize'] = '18px';
-  input.style['fontFamily'] = 'monospace';
-  input.style['padding'] = '0px';
-  input.style['margin'] = '0px';
-  input.style['opacity'] = '0.7';
-  input.style['position'] = 'absolute';
-  input.style['top'] = '50%';
-  input.style['left'] = '0%';
-  input.style['width'] = '100%';
-  input.style['margin-left'] = '0px';
-  input.style['margin-top'] = '-9px';
-  
-  input.onkeydown = function(evt) {
-    var keyCode = evt.which || evt.keyCode;
+    // Create inner and outer wrappers. We need two to position the input at the bottom.
+    var div = document.createElement('div');
+    div.className = 'VIMLIKE-ex-mode-outer';
+    var innerDiv = document.createElement('div');
+    innerDiv.className = 'VIMLIKE-ex-mode-inner';
+    div.appendChild(innerDiv);
 
-    if (keyCode == 13 || keyCode == 27)
-    {
-      // Either enter or escape was pressed, so we're done.
-      VIMLIKE.mode = 'normal';
-      evt.preventDefault();
-      top.document.body.removeChild(div);
+    // Create the input element - the ex mode commandline.
+    var input = document.createElement('input');
+    input.className = 'VIMLIKE-ex-mode-input';
+    input.type = 'text';
+    input.value = ':';
+    innerDiv.appendChild(input);
+    
+    input.onkeydown = function(evt) {
+      var keyCode = evt.which || evt.keyCode;
 
-      if (keyCode == 13)
+      if (keyCode == 13 || keyCode == 27)
       {
-        // Enter was pressed.
-        var args = input.value.split(' ');
-        var cmd = args[0];
-        args.shift();       // Remove the command itself.
-        if (typeof VIMLIKE.exHandler[cmd] == 'function')
-          VIMLIKE.exHandler[cmd].apply(this, args);
+        // Either enter or escape was pressed, so we're done.
+        mode = 'normal';
+        evt.preventDefault();
+        top.document.body.removeChild(div);
+
+        if (keyCode == 13)
+        {
+          // Enter was pressed.
+          var args = input.value.split(' ');
+          var cmd = args[0];
+          args.shift();       // Remove the command itself.
+          if (typeof exHandlers[cmd] == 'function')
+            exHandlers[cmd].apply(this, args);
+        }
+      }
+    };
+
+    top.document.body.appendChild(div);
+
+    input.focus();
+  }
+
+  function linkSearch()
+  {
+    // Prepare.
+    var keys = [];
+    var doc = top.document;
+    var namespaceResolver = doc.createNSResolver(doc);
+    var query = '(//a[@href]|//input[not(@type=\x22hidden\x22)]|//textarea|//select|//img[@onclick]|//button)';
+    var queryResult = null;
+    var keyMap = {'8': 'Bkspc', '46': 'Delete', '32': 'Space', '13':'Enter', '16': 'Shift', '17': 'Ctrl', '18': 'Alt'};
+
+    function keyDown(e)
+    {
+      var key = e.keyCode || e.which;
+
+      switch (key)
+      {
+        case 8:   // Backspace.
+        case 46:  // Delete.
+        {
+          keys.pop();
+          break;
+        }
+
+        case 27:  // Escape.
+        {
+          // Remove this handler.
+          doc.removeEventListener('keydown', keyDown, true);
+          break;
+        }
+
+        default:
+        {
+          // Normalize the key.
+          key = String.fromCharCode(key);
+          //if (!e.shiftKey)
+            //key = key.toLowerCase();
+          
+          keys.push(key);
+
+          // Compute full query.
+          var predicates = [];
+          var previous = "translate(text(), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')";
+          for (var k = 0 ; k < keys.length ; ++k)
+          {
+            var current = '(' + previous + ', "' + keys[k] + '")';
+            predicates.push('contains' + current);
+            previous = 'substring-after' + current;
+          }
+
+          var fullQuery = query + '[' + predicates.join(' and ') + ']';
+
+          // Make query.
+          console.log("Query: %s", fullQuery);
+          queryResult = doc.evaluate(fullQuery, doc, namespaceResolver, XPathResult.ANY_TYPE, queryResult);
+
+          // Print results to console.
+          var item = queryResult.iterateNext();
+          while (item)
+          {
+            console.log("Match: %s", item.textContent);
+            item = queryResult.iterateNext();
+          }
+
+          break;
+        }
       }
     }
-  };
 
-  div.appendChild(input);
-  top.document.body.appendChild(div);
+    // Register the event listener.
+    doc.addEventListener('keydown', keyDown, true);
+  }
 
-  // Center.
-  div.style['top'] = top.pageYOffset + 'px';
-  div.style['left'] = top.pageXOffset + 'px';
-  div.style['height'] = top.innerHeight;
-  div.style['width'] = top.innerWidth;
-
-  input.focus();
-},
-pagedown: function(){
-  scrollBy(0, VIMLIKE.interval*10);
-},
-pageup: function(){
-  scrollBy(0, -(VIMLIKE.interval*10));
-},
-scrolldown: function(){
-  scrollBy(0, VIMLIKE.interval);
-},
-scrollup: function(){
-  scrollBy(0, -VIMLIKE.interval);
-},
-scrollTop: function(){
-  scroll(0, -document.documentElement.scrollHeight)
-},
-scrollBottom: function(){
-  scroll(0, document.documentElement.scrollHeight)
-},
-scrollleft: function(){
-  scrollBy(-VIMLIKE.interval, 0);
-},
-scrollright: function(){
-  scrollBy(VIMLIKE.interval, 0);
-},
-openNewTab: function(){
-  safari.self.tab.dispatchMessage('vimlike','open');
-},
-openBackGround:function(url){
-  safari.self.tab.dispatchMessage('vimlike', {background:url});
-},
-reopenTab: function(){
-  safari.self.tab.dispatchMessage('vimlike','reopen');
-},
-previousTab: function(){
-  safari.self.tab.dispatchMessage('vimlike','previous');
-},
-nextTab: function(){
-  safari.self.tab.dispatchMessage('vimlike','next');
-},
-closeTab: function(){
-  safari.self.tab.dispatchMessage('vimlike','close');
-},
-reload: function(){
-  location.reload();
-},
-hah: function(isCurrent){
-    var hintKeys = new String(VIMLIKE.hintText).toUpperCase();
+  function hah(isCurrent)
+  {
+    var hintKeys = new String(hintText).toUpperCase();
     var xpath = '//a[@href]|//input[not(@type=\x22hidden\x22)]|//textarea|//select|//img[@onclick]|//button';
     var hintColor = '\x23ffff00';
     var hintColorForm = '\x2300ffff';
@@ -347,7 +407,7 @@ hah: function(isCurrent){
             if( /https?:\/\//.test(lastMatchHint.element.href) ){
               eve.preventDefault();
               eve.stopPropagation();
-              VIMLIKE.openBackGround(lastMatchHint.element.href);
+              openBackGround(lastMatchHint.element.href);
             }
           }
           resetInput();
@@ -413,7 +473,7 @@ hah: function(isCurrent){
       if(div){
         win.document.body.removeChild(div);
       }
-      VIMLIKE.mode = 'normal';
+      mode = 'normal';
     }
 
     function hahInit(){
@@ -436,122 +496,51 @@ hah: function(isCurrent){
       }
     }
 
-    VIMLIKE.mode = 'hint';
+    mode = 'hint';
     hahInit();
     hahDraw();
-},
-historyBack: function(){
-    history.back();
-},
-historyForward: function(){
-    history.forward();
-},
-blurFocus: function(){
-  document.activeElement.blur();
-},
-modechange: function(){
-  switch(VIMLIKE.mode){
-    case 'useonline':
-      VIMLIKE.mode = 'normal';
-      break;
-    case 'normal':
-      VIMLIKE.mode = 'useonline';
-      break;
-    default:
-      VIMLIKE.mode = 'normal';
   }
-  var modeDiv = document.getElementById('VIMLIKE_MODE_DIV');
-  if( modeDiv ){
-    modeDiv.innerHTML = VIMLIKE.mode;
-    var fadeOut = function(opa){
-      modeDiv.style.opacity = opa/100;
-      opa -= 10;
-      if( opa < 10 ){
-        modeDiv.style.opacity = 0.1;
-        return;
-      }
-      setTimeout( function(){ fadeOut(opa); },200);
-    }
-    fadeOut(80);
-  }
-},
-toggleIgnoreForms: function(){
-  VIMLIKE.ignoreForms = !VIMLIKE.ignoreForms;
-  console.log("Ignore forms = " + VIMLIKE.ignoreForms);
-},
-kc2char: function(kc){
-   function between(a,b){
-     return a <= kc && kc <= b;
-   }
-   var _32_40 = "space pageup pagedown end home left up right down".split(" ");
-   var kt = {
-     8  : "backspace",
-     9  : "tab"  ,
-     13 : "enter",
-     16 : "shift",
-     17 : "control",
-     27 : "escape",
-     46 : "delete",
-   };
-   return (between(65,90)  ? String.fromCharCode(kc+32) : // a-z
+
+  function kc2char(kc)
+  {
+    function between(a,b) { return a <= kc && kc <= b; }
+
+    var _32_40 = "space pageup pagedown end home left up right down".split(" ");
+    var kt = {
+       8  : "backspace",
+       9  : "tab"  ,
+       13 : "enter",
+       16 : "shift",
+       17 : "control",
+       27 : "escape",
+       46 : "delete",
+    };
+    return (between(65,90)  ? String.fromCharCode(kc+32) : // a-z
            between(48,57)  ? String.fromCharCode(kc) :    // 0-9
            between(96,105) ? String.fromCharCode(kc-48) : // num 0-9
            between(32,40)  ? _32_40[kc-32] :
            kt.hasOwnProperty(kc) ? kt[kc] : kc);
-},
-init: function(){
-  for( var key in VIMLIKE.handler){
-    if( key.length > 1 && !(/S-|C-|A-|escape/.test(key))){
-      VIMLIKE.firstStroke[key[0]] = true;
+  }
+
+  function init()
+  {
+    for( var key in normHandlers){
+      if( key.length > 1 && !(/S-|C-|A-|escape/.test(key))){
+        firstStroke[key[0]] = true;
+      }
     }
+    safari.self.tab.dispatchMessage('vimlike:tabLoaded');
   }
-  //VIMLIKE.createModeDiv();
-  safari.self.tab.dispatchMessage('vimlike','load');
 
-},
-createModeDiv: function(){
-  var modeDiv = document.createElement('div');
-  modeDiv.id = 'VIMLIKE_MODE_DIV';
-  var styles = {
-    'bottom': '0px',
-    'right' : '0px',
-    'width' : '200px',
-    'backgroundColor' : '#88cc88',
-    'color' : '#333',
-    'fontSize' : '10pt',
-    'position' : 'fixed',
-    'borderRadius' : '10px',
-    'zIndex' : '100',
-    'border' : '1px dotted #333',
-    'opacity' : '0.1',
-    'textAlign' : 'center'
-  };
-  for( var key in styles ){
-    modeDiv.style[key] = styles[key];
-  }
-  modeDiv.innerHTML = VIMLIKE.mode;
-  modeDiv.addEventListener('mouseover', function(){
-    this.style.opacity = '0.8';
-  },false );
-  modeDiv.addEventListener('mouseout', function(){
-    this.style.opacity = '0.1';
-  },false );
-  document.body.appendChild(modeDiv);
-}
+  init(); 
+  document.addEventListener( 'keydown', function(e){ keyEvent(e); }, true);
 
-}
-
-VIMLIKE.init(); 
-document.addEventListener( 'keydown', function(e){ VIMLIKE.keyEvent(e); }, true);
-
-if( typeof window.VIMLIKE == "undefined" ){
-  window.VIMLIKE = VIMLIKE;
-}
-
-safari.self.addEventListener( 'message', function(e){
-  if( e.name === 'hintText' ){
-    VIMLIKE.hintText = e.message;
-  }
-}, false );
-
+  safari.self.addEventListener('message', function(e){
+    if( e.name === 'hintText' ){
+      hintText = e.message;
+    }
+    if ( e.name === 'insertDefault'){
+      insertDefault = e.message;
+    }
+  }, false );
 })();
